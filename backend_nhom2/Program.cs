@@ -133,7 +133,7 @@ app.UseHttpsRedirection();
 
 
 app.UseCors(MyAllowSpecificOrigins);
-
+app.UseHttpsRedirection();
 app.UseAuthentication(); // Phải đứng trước UseAuthorization
 app.UseAuthorization(); // Phải đứng trước MapControllers
 
