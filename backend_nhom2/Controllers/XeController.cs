@@ -12,18 +12,18 @@ namespace backend_nhom2.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Owner")] // Chỉ Owner được quản lý xe
+    [Authorize(Roles = "Owner")]
     public class XeController : ControllerBase
     {
         private readonly AppDbContext _db;
         public XeController(AppDbContext db) => _db = db;
 
-        // GET: api/Xe - Lấy danh sách xe kèm thông tin tài xế
+        // GET: api/Xe 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<XeReadDto>>> GetAll()
         {
             var xes = await _db.Xes
-                .Include(x => x.User) // Nạp thông tin User (tài xế)
+                .Include(x => x.User)
                 .AsNoTracking()
                 .Select(x => new XeReadDto
                 {
@@ -78,38 +78,68 @@ namespace backend_nhom2.Controllers
             return CreatedAtAction(nameof(GetById), new { id = xe.BS_XE }, readDto);
         }
 
-        // PUT: api/Xe/{bsxe} - Cập nhật thông tin cơ bản của xe
+        // PUT: api/Xe/{bsxe} 
         [HttpPut("{bsxe}")]
         public async Task<IActionResult> Update(string bsxe, [FromBody] XeUpdateDto dto)
         {
             var xe = await _db.Xes.FindAsync(bsxe);
             if (xe is null) return NotFound();
 
-            xe.TENXE = dto.TenXe; // thuộc tính theo DTO của bạn
+            xe.TENXE = dto.TenXe;
             xe.TT_XE = dto.TT_XE;
 
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        // PUT: api/Xe/{bsxe}/assign-driver - Gán tài xế cho xe
+        // PUT: api/Xe/{bsxe}/assign-driver - Gán tài xế
         [HttpPut("{bsxe}/assign-driver")]
         public async Task<IActionResult> AssignDriver(string bsxe, [FromBody] AssignDriverDto dto)
         {
-            var xe = await _db.Xes.FindAsync(bsxe);
-            if (xe is null) return NotFound($"Không tìm thấy xe với biển số: {bsxe}");
 
-            var driver = await _db.Users
+            var targetVehicle = await _db.Xes.FindAsync(bsxe);
+            if (targetVehicle is null) return NotFound($"Không tìm thấy xe với biển số: {bsxe}");
+
+            var targetDriver = await _db.Users
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.UserId == dto.UserId);
 
-            if (driver is null) return BadRequest($"Không tìm thấy tài xế với ID: {dto.UserId}");
-            if (driver.Role?.RoleName != "Driver") return BadRequest($"Người dùng có ID {dto.UserId} không phải là tài xế.");
+            if (targetDriver is null) return BadRequest($"Không tìm thấy tài xế với ID: {dto.UserId}");
+            if (targetDriver.Role?.RoleName != "Driver") return BadRequest($"Người dùng có ID {dto.UserId} không phải là tài xế.");
 
-            xe.UserId = dto.UserId;
+
+            int? oldDriverIdOnTargetVehicle = targetVehicle.UserId;
+            var oldVehicleOfTargetDriver = await _db.Xes
+                .FirstOrDefaultAsync(v => v.UserId == targetDriver.UserId);
+
+            if (oldVehicleOfTargetDriver?.BS_XE == targetVehicle.BS_XE)
+            {
+                return Ok(new { message = "Tài xế đã được gán cho xe này." });
+            }
+
+            if (oldVehicleOfTargetDriver != null)
+            {
+                oldVehicleOfTargetDriver.UserId = null;
+            }
+
+            targetVehicle.UserId = targetDriver.UserId;
+
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = $"Đã gán tài xế '{driver.FullName}' cho xe '{bsxe}' thành công." });
+            string message = $"Đã gán tài xế '{targetDriver.FullName}' cho xe '{bsxe}'.";
+
+            if (oldDriverIdOnTargetVehicle != null)
+            {
+                var oldDriver = await _db.Users.FindAsync(oldDriverIdOnTargetVehicle);
+                message += $" Tài xế cũ '{oldDriver?.FullName}' đã được gỡ khỏi xe này.";
+            }
+
+            if (oldVehicleOfTargetDriver != null)
+            {
+                message += $" Xe cũ '{oldVehicleOfTargetDriver.BS_XE}' của tài xế này đã được bỏ trống.";
+            }
+
+            return Ok(new { message });
         }
 
         // DELETE: api/Xe/{id}
@@ -119,8 +149,6 @@ namespace backend_nhom2.Controllers
             var xe = await _db.Xes.FindAsync(id);
             if (xe is null) return NotFound();
 
-            // Quan hệ mới: Xe 1-N DonHang
-            // => Không cho xóa nếu có đơn đang gán xe này
             bool inUse = await _db.DonHangs.AnyAsync(d => d.BS_XE == id);
             if (inUse) return Conflict("Không thể xóa xe này vì đang được gán cho một hoặc nhiều đơn hàng.");
 

@@ -21,7 +21,6 @@ namespace backend_nhom2.Controllers
             _context = context;
         }
 
-        // --- HÀM MỚI ---
         // Dùng để lấy về tất cả người dùng có vai trò là "Driver"
         // GET: api/User/drivers
         [HttpGet("drivers")]
@@ -44,7 +43,6 @@ namespace backend_nhom2.Controllers
             return Ok(drivers);
         }
 
-        // --- HÀM CŨ ---
         // Owner tạo tài khoản cho tài xế mới
         // POST: api/User/create-driver
         [HttpPost("create-driver")]
@@ -63,7 +61,6 @@ namespace backend_nhom2.Controllers
             var driverRole = await _context.Roles.SingleOrDefaultAsync(r => r.RoleName == "Driver");
             if (driverRole == null)
             {
-                // Trường hợp này hiếm khi xảy ra nếu đã seed data
                 return StatusCode(500, "Không tìm thấy vai trò 'Driver' trong hệ thống.");
             }
 
@@ -84,32 +81,6 @@ namespace backend_nhom2.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"Tạo tài khoản cho tài xế {user.FullName} thành công!" });
-        }
-
-        // Owner gán một tài xế vào một xe
-        // PUT: api/User/assign-driver-to-vehicle?driverId=...&vehiclePlate=...
-        [HttpPut("assign-driver-to-vehicle")]
-        public async Task<IActionResult> AssignDriverToVehicle([FromQuery] int driverId, [FromQuery] string vehiclePlate)
-        {
-            var driver = await _context.Users.Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.UserId == driverId);
-
-            if (driver == null || driver.Role.RoleName != "Driver")
-            {
-                return NotFound("Không tìm thấy tài xế hợp lệ.");
-            }
-
-            var vehicle = await _context.Xes.FirstOrDefaultAsync(v => v.BS_XE == vehiclePlate);
-            if (vehicle == null)
-            {
-                return NotFound("Không tìm thấy xe với biển số này.");
-            }
-
-            // Gán tài xế cho xe
-            vehicle.UserId = driverId;
-            await _context.SaveChangesAsync();
-
-            return Ok($"Đã gán tài xế {driver.FullName} vào xe {vehicle.BS_XE}.");
         }
     }
 }

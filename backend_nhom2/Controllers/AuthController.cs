@@ -65,41 +65,6 @@ namespace backend_nhom2.Controllers
             return Ok(new { message = "Tạo tài khoản Owner đầu tiên thành công!" });
         }
 
-        // Dùng để Owner tạo các tài khoản khác như Driver.
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequestDto request)
-        {
-            if (await _context.Users.AnyAsync(u => u.Username == request.Username))
-            {
-                return BadRequest("Username đã tồn tại.");
-            }
-
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == request.Role.Trim());
-            if (role == null)
-            {
-                return BadRequest("Vai trò không hợp lệ. Vui lòng cung cấp một vai trò hợp lệ.");
-            }
-
-            // Gọi đầy đủ BCrypt.Net.BCrypt
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
-
-            var user = new User
-            {
-                Username = request.Username,
-                PasswordHash = passwordHash,
-                FullName = request.FullName,
-                PhoneNumber = request.PhoneNumber,
-                CCCD = request.CCCD,
-                RoleId = role.RoleId,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Đăng ký người dùng thành công!" });
-        }
-
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginRequestDto request)
         {
