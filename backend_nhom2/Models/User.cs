@@ -16,5 +16,11 @@ namespace backend_nhom2.Models
 
         // Nếu user này là tài xế, đây là xe họ được gán
         public Xe? Xe { get; set; }
+
+
+        // === THÊM MỚI CHO CHỨC NĂNG NFC/ĐIỂM THƯỞNG ===
+        public string? NfcCardId { get; set; } // ID thẻ NFC duy nhất
+        public int Score { get; set; } = 0;    // Điểm thưởng của Driver
+        // ===============================================
     }
 }
