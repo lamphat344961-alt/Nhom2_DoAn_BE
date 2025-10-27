@@ -1,10 +1,13 @@
-﻿using backend_nhom2.Data;
+﻿// File: Controllers/DriverController.cs
+
+using backend_nhom2.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using System; // Cần thêm System cho DateTime
 
 namespace backend_nhom2.Controllers
 {
@@ -21,7 +24,7 @@ namespace backend_nhom2.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách đơn hàng được gán cho tài xế hiện tại (dựa trên xe).
+        /// Lấy danh sách đơn hàng được gán cho tài xế hiện tại, CHỈ LẤY ĐƠN TRẠNG THÁI 'CHO_GIAO'.
         /// </summary>
         [HttpGet("my-deliveries")]
         public async Task<IActionResult> GetMyDeliveries()
@@ -43,11 +46,13 @@ namespace backend_nhom2.Controllers
             if (myPlates.Count == 0)
                 return Ok("Bạn chưa được gán xe nào.");
 
-            // Lấy các đơn hàng của các xe đó, chưa hoàn thành
+            // 🔄 SỬA LOGIC LỌC: CHỈ LỌC các đơn hàng có trạng thái là 'CHO_GIAO'
+            const string trangThaiChoGiao = "CHO_GIAO";
+
             var deliveries = await _db.DonHangs
                 .Include(d => d.DiemGiao)
                 .Where(d =>
-                    d.TRANGTHAI != "HOANTHANH" &&
+                    d.TRANGTHAI == trangThaiChoGiao && // ⬅️ CHỈ LỌC 'CHO_GIAO'
                     d.BS_XE != null &&
                     myPlates.Contains(d.BS_XE))
                 .Select(d => new
@@ -58,7 +63,7 @@ namespace backend_nhom2.Controllers
                     DiaChiGiao = d.DiemGiao != null ? d.DiemGiao.VITRI : null,
                     Lat = d.DiemGiao != null ? d.DiemGiao.Lat : null,
                     Lng = d.DiemGiao != null ? d.DiemGiao.Lng : null,
-                    TrangThai = d.TRANGTHAI,
+                    TrangThai = d.TRANGTHAI, // Sẽ luôn là CHO_GIAO
                     NgayGiaoDuKien = d.NGAYGIAO
                 })
                 .AsNoTracking()
@@ -94,7 +99,8 @@ namespace backend_nhom2.Controllers
             if (order.Xe == null || order.Xe.UserId != userId)
                 return Forbid("Bạn không có quyền hoàn thành đơn này.");
 
-            order.TRANGTHAI = "HOANTHANH";
+            // 🔄 SỬA: Đảm bảo sử dụng "HOAN_THANH" (có dấu gạch dưới)
+            order.TRANGTHAI = "HOAN_THANH";
             order.NGAYGIAO = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();

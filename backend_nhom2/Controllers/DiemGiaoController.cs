@@ -70,7 +70,7 @@ namespace backend_nhom2.Controllers
             var entity = await _db.DiemGiaos.FindAsync(id);
             if (entity is null)
                 return NotFound($"Không tìm thấy điểm giao với ID: {id}");
-
+            // Sửa thì phải sửa thủ công
             entity.TEN = diemGiao.TEN;
             entity.VITRI = diemGiao.VITRI;
             entity.Lat = diemGiao.Lat;
